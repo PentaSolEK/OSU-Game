@@ -1,1 +1,99 @@
-Hello World
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Game</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 1px solid #fff;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="480" height="640"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const SCREEN_WIDTH = canvas.width;
+        const SCREEN_HEIGHT = canvas.height;
+        const PLAYER_WIDTH = 50;
+        const PLAYER_HEIGHT = 50;
+        const ITEM_WIDTH = 20;
+        const ITEM_HEIGHT = 20;
+        const ITEM_FALL_SPEED = 5;
+        const PLAYER_SPEED = 10;
+
+        let player = {
+            x: (SCREEN_WIDTH - PLAYER_WIDTH) / 2,
+            y: SCREEN_HEIGHT - PLAYER_HEIGHT - 10,
+            width: PLAYER_WIDTH,
+            height: PLAYER_HEIGHT,
+            color: 'blue'
+        };
+        let items = [];
+
+        function drawRect(rect) {
+            ctx.fillStyle = rect.color;
+            ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        }
+
+        function updateGame() {
+            ctx.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+            if (Math.random() < 0.05) {
+                items.push({
+                    x: Math.random() * (SCREEN_WIDTH - ITEM_WIDTH),
+                    y: 0,
+                    width: ITEM_WIDTH,
+                    height: ITEM_HEIGHT,
+                    color: 'red'
+                });
+            }
+
+            items.forEach((item, index) => {
+                item.y += ITEM_FALL_SPEED;
+                if (item.y > SCREEN_HEIGHT) {
+                    items.splice(index, 1);
+                }
+                if (item.x < player.x + player.width &&
+                    item.x + item.width > player.x &&
+                    item.y < player.y + player.height &&
+                    item.y + item.height > player.y) {
+                    items.splice(index, 1);
+                }
+            });
+
+            drawRect(player);
+            items.forEach(drawRect);
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowLeft' && player.x > 0) {
+                player.x -= PLAYER_SPEED;
+            } else if (event.key === 'ArrowRight' && player.x < SCREEN_WIDTH - PLAYER_WIDTH) {
+                player.x += PLAYER_SPEED;
+            }
+        });
+
+        function gameLoop() {
+            updateGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
+
