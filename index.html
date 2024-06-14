@@ -42,18 +42,36 @@
             padding: 5px 10px;
             border-radius: 5px;
             display: none; /* Скрыть счет до начала игры */
+            user-select: none; /* Сделать текст не выделяемым */
         }
-        #welcome-screen {
+        #timer {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 24px;
+            color: #fff;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: none; /* Скрыть таймер до начала игры */
+            user-select: none; /* Сделать текст не выделяемым */
+        }
+        #welcome-screen, #game-over-screen {
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
         }
-        #welcome-screen h1 {
+        #welcome-screen h1, #game-over-screen h1 {
             margin: 0;
             font-size: 32px;
         }
-        #play-button {
+        #play-button, #retry-button {
             margin-top: 20px;
             padding: 10px 20px;
             font-size: 18px;
@@ -63,8 +81,11 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        #play-button:hover {
+        #play-button:hover, #retry-button:hover {
             background-color: #808080;
+        }
+        #game-over-screen {
+            display: none; /* Скрыть экран game over до конца игры */
         }
     </style>
 </head>
@@ -74,15 +95,24 @@
             <h1>Welcome to Osu! Game</h1>
             <button id="play-button">Play</button>
         </div>
+        <div id="game-over-screen">
+            <h1>Game over! Your score: <span id="final-score"></span></h1>
+            <button id="retry-button">Retry</button>
+        </div>
         <div id="score">Score: 0</div>
+        <div id="timer">Time: 10</div>
         <canvas id="gameCanvas"></canvas>
     </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
+        const timerElement = document.getElementById('timer');
         const welcomeScreen = document.getElementById('welcome-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
         const playButton = document.getElementById('play-button');
+        const retryButton = document.getElementById('retry-button');
+        const finalScoreElement = document.getElementById('final-score');
 
         // Установка размера Canvas в зависимости от размера контейнера
         function resizeCanvas() {
@@ -93,11 +123,15 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        const ITEM_RADIUS = 10;
+        const ITEM_RADIUS = 13;
+        const ITEM_HITBOX_RADIUS = 26;  // Радиус для хитбокса
         const ITEM_FALL_SPEED = 5;
 
         let score = 0;
         let items = [];
+        let timer = 10;
+        let gameInterval;
+        let timerInterval;
 
         function drawCircle(item) {
             ctx.beginPath();
@@ -137,7 +171,7 @@
             items.forEach((item, index) => {
                 const dx = mouseX - item.x;
                 const dy = mouseY - item.y;
-                if (dx * dx + dy * dy <= ITEM_RADIUS * ITEM_RADIUS) {
+                if (dx * dx + dy * dy <= ITEM_HITBOX_RADIUS * ITEM_HITBOX_RADIUS) {
                     items.splice(index, 1);
                     score++;
                     scoreElement.textContent = `Score: ${score}`;
@@ -147,15 +181,51 @@
 
         function gameLoop() {
             updateGame();
-            requestAnimationFrame(gameLoop);
+            gameInterval = requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            welcomeScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            canvas.style.display = 'block';
+            scoreElement.style.display = 'block';
+            timerElement.style.display = 'block';
+            score = 0;
+            timer = 10;
+            scoreElement.textContent = `Score: ${score}`;
+            timerElement.textContent = `Time: ${timer}`;
+
+            gameLoop();
+
+            timerInterval = setInterval(() => {
+                timer--;
+                timerElement.textContent = `Time: ${timer}`;
+                if (timer <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            cancelAnimationFrame(gameInterval);
+            clearInterval(timerInterval);
+            items = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.style.display = 'none';
+            scoreElement.style.display = 'none';
+            timerElement.style.display = 'none';
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.display = 'flex';
         }
 
         // Начать игру по нажатию кнопки Play
         playButton.addEventListener('click', () => {
-            welcomeScreen.style.display = 'none';
-            canvas.style.display = 'block';
-            scoreElement.style.display = 'block';
-            gameLoop();
+            startGame();
+        });
+
+        // Повторить игру по нажатию кнопки Retry
+        retryButton.addEventListener('click', () => {
+            startGame();
         });
     </script>
 </body>
