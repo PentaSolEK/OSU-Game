@@ -14,49 +14,35 @@
             background-color: #000;
             color: #fff;
             font-family: Arial, sans-serif;
-            position: relative;
         }
         #game-container {
             position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 480px;
+            max-height: 640px;
+            border: 1px solid #fff;
             display: flex;
             justify-content: center;
             align-items: center;
-            width: 100%;
-            height: 100%;
-            max-width: 480px; /* Максимальная ширина для игры */
-            max-height: 640px; /* Максимальная высота для игры */
-            border: 1px solid #fff;
         }
         #gameCanvas {
             width: 100%;
             height: 100%;
-            display: none; /* Скрыть канвас до начала игры */
+            display: none;
         }
-        #score {
+        #score, #timer {
             position: absolute;
-            top: 10px;
-            right: 10px;
             font-size: 24px;
-            color: #fff;
             background-color: rgba(0, 0, 0, 0.5);
             padding: 5px 10px;
             border-radius: 5px;
-            display: none; /* Скрыть счет до начала игры */
-            user-select: none; /* Сделать текст не выделяемым */
+            display: none;
+            user-select: none;
         }
-        #timer {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            font-size: 24px;
-            color: #fff;
-            background-color: rgba(0, 0, 0, 0.5);
-            padding: 5px 10px;
-            border-radius: 5px;
-            display: none; /* Скрыть таймер до начала игры */
-            user-select: none; /* Сделать текст не выделяемым */
-        }
-        #welcome-screen, #game-over-screen {
+        #score { top: 10px; right: 10px; }
+        #timer { top: 10px; left: 10px; }
+        #welcome-screen, #end-screen {
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -64,44 +50,41 @@
             position: absolute;
             width: 100%;
             height: 100%;
+            user-select: none;
+        }
+        #end-screen {
             background-color: rgba(0, 0, 0, 0.8);
-            color: #fff;
+            display: none;
         }
-        #welcome-screen h1, #game-over-screen h1 {
-            margin: 0;
-            font-size: 32px;
-        }
-        #play-button, #retry-button {
+        h1 { font-size: 32px; margin: 0; }
+        .button {
             margin-top: 20px;
             padding: 10px 20px;
             font-size: 18px;
-            background-color: #FFFFFF;
-            color: #000000;
+            background-color: #fff;
+            color: #000;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            user-select: none;
         }
-        #play-button:hover, #retry-button:hover {
-            background-color: #808080;
-        }
-        #game-over-screen {
-            display: none; /* Скрыть экран game over до конца игры */
-        }
+        .button:hover { background-color: #808080; }
     </style>
 </head>
 <body>
     <div id="game-container">
         <div id="welcome-screen">
             <h1>Welcome to Osu! Game</h1>
-            <button id="play-button">Play</button>
-        </div>
-        <div id="game-over-screen">
-            <h1>Game over! Your score: <span id="final-score"></span></h1>
-            <button id="retry-button">Retry</button>
+            <button id="play-button" class="button">Play</button>
         </div>
         <div id="score">Score: 0</div>
-        <div id="timer">Time: 10</div>
+        <div id="timer">Time: 15</div>
         <canvas id="gameCanvas"></canvas>
+        <div id="end-screen">
+            <h1>Game Over</h1>
+            <p id="final-score"></p>
+            <button id="restart-button" class="button">Restart</button>
+        </div>
     </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -109,12 +92,16 @@
         const scoreElement = document.getElementById('score');
         const timerElement = document.getElementById('timer');
         const welcomeScreen = document.getElementById('welcome-screen');
-        const gameOverScreen = document.getElementById('game-over-screen');
-        const playButton = document.getElementById('play-button');
-        const retryButton = document.getElementById('retry-button');
+        const endScreen = document.getElementById('end-screen');
         const finalScoreElement = document.getElementById('final-score');
+        const playButton = document.getElementById('play-button');
+        const restartButton = document.getElementById('restart-button');
+        const ITEM_RADIUS = 13;
+        const ITEM_HITBOX_RADIUS = 26;
+        const ITEM_FALL_SPEED = 322; // Pixels per second
+        const GAME_DURATION = 15;
+        let score, timeLeft, gameRunning, items, lastTimestamp;
 
-        // Установка размера Canvas в зависимости от размера контейнера
         function resizeCanvas() {
             const container = document.getElementById('game-container');
             canvas.width = container.clientWidth;
@@ -123,110 +110,91 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        const ITEM_RADIUS = 13;
-        const ITEM_HITBOX_RADIUS = 26;  // Радиус для хитбокса
-        const ITEM_FALL_SPEED = 5;
-
-        let score = 0;
-        let items = [];
-        let timer = 10;
-        let gameInterval;
-        let timerInterval;
-
-        function drawCircle(item) {
-            ctx.beginPath();
-            ctx.arc(item.x, item.y, ITEM_RADIUS, 0, Math.PI * 2);
-            ctx.fillStyle = item.color;
-            ctx.fill();
-            ctx.closePath();
-        }
-
-        function updateGame() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            if (Math.random() < 0.05) {
-                items.push({
-                    x: Math.random() * (canvas.width - ITEM_RADIUS * 2) + ITEM_RADIUS,
-                    y: 0,
-                    radius: ITEM_RADIUS,
-                    color: 'red'
-                });
-            }
-
-            items.forEach((item, index) => {
-                item.y += ITEM_FALL_SPEED;
-                if (item.y - ITEM_RADIUS > canvas.height) {
-                    items.splice(index, 1);
-                }
-            });
-
-            items.forEach(drawCircle);
-        }
-
-        canvas.addEventListener('click', (event) => {
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = event.clientX - rect.left;
-            const mouseY = event.clientY - rect.top;
-
-            items.forEach((item, index) => {
-                const dx = mouseX - item.x;
-                const dy = mouseY - item.y;
-                if (dx * dx + dy * dy <= ITEM_HITBOX_RADIUS * ITEM_HITBOX_RADIUS) {
-                    items.splice(index, 1);
-                    score++;
-                    scoreElement.textContent = `Score: ${score}`;
-                }
-            });
-        });
-
-        function gameLoop() {
-            updateGame();
-            gameInterval = requestAnimationFrame(gameLoop);
-        }
-
         function startGame() {
             welcomeScreen.style.display = 'none';
-            gameOverScreen.style.display = 'none';
             canvas.style.display = 'block';
             scoreElement.style.display = 'block';
             timerElement.style.display = 'block';
+            endScreen.style.display = 'none';
             score = 0;
-            timer = 10;
-            scoreElement.textContent = `Score: ${score}`;
-            timerElement.textContent = `Time: ${timer}`;
-
+            timeLeft = GAME_DURATION;
+            items = [];
+            gameRunning = true;
+            updateUI();
+            lastTimestamp = performance.now();
             gameLoop();
+            startTimer();
+        }
 
-            timerInterval = setInterval(() => {
-                timer--;
-                timerElement.textContent = `Time: ${timer}`;
-                if (timer <= 0) {
+        function updateUI() {
+            scoreElement.textContent = `Score: ${score}`;
+            timerElement.textContent = `Time: ${timeLeft}`;
+        }
+
+        function gameLoop(timestamp) {
+            const deltaTime = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (Math.random() < 0.05) {
+                items.push({ x: Math.random() * (canvas.width - ITEM_RADIUS * 2) + ITEM_RADIUS, y: 0, radius: ITEM_RADIUS, color: 'red' });
+            }
+            items.forEach((item, index) => {
+                item.y += ITEM_FALL_SPEED * deltaTime;
+                if (item.y - ITEM_RADIUS > canvas.height) items.splice(index, 1);
+            });
+            items.forEach(item => {
+                ctx.beginPath();
+                ctx.arc(item.x, item.y, ITEM_RADIUS, 0, Math.PI * 2);
+                ctx.fillStyle = item.color;
+                ctx.fill();
+                ctx.closePath();
+            });
+            if (gameRunning) requestAnimationFrame(gameLoop);
+        }
+
+        function handleInteraction(event) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = (event.clientX || event.touches[0].clientX) - rect.left;
+            const mouseY = (event.clientY || event.touches[0].clientY) - rect.top;
+            items.forEach((item, index) => {
+                if (Math.hypot(mouseX - item.x, mouseY - item.y) <= ITEM_HITBOX_RADIUS) {
+                    items.splice(index, 1);
+                    score++;
+                    updateUI();
+                }
+            });
+        }
+
+        canvas.addEventListener('click', handleInteraction);
+        canvas.addEventListener('touchstart', handleInteraction);
+
+        function startTimer() {
+            const timerInterval = setInterval(() => {
+                if (!gameRunning) {
+                    clearInterval(timerInterval);
+                    return;
+                }
+                timeLeft--;
+                updateUI();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
                     endGame();
                 }
             }, 1000);
         }
 
         function endGame() {
-            cancelAnimationFrame(gameInterval);
-            clearInterval(timerInterval);
-            items = [];
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            gameRunning = false;
             canvas.style.display = 'none';
             scoreElement.style.display = 'none';
             timerElement.style.display = 'none';
-            finalScoreElement.textContent = score;
-            gameOverScreen.style.display = 'flex';
+            endScreen.style.display = 'flex';
+            finalScoreElement.textContent = `Your score is ${score}`;
         }
 
-        // Начать игру по нажатию кнопки Play
-        playButton.addEventListener('click', () => {
-            startGame();
-        });
-
-        // Повторить игру по нажатию кнопки Retry
-        retryButton.addEventListener('click', () => {
-            startGame();
-        });
+        playButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
     </script>
 </body>
 </html>
