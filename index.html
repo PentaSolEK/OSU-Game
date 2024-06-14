@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Game</title>
+    <title>Osu! Game</title>
     <style>
         body {
             margin: 0;
@@ -16,14 +16,25 @@
             font-family: Arial, sans-serif;
             position: relative;
         }
-        canvas {
-            border: 1px solid #fff;
+        #game-container {
             position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            max-width: 480px; /* Максимальная ширина для игры */
+            max-height: 640px; /* Максимальная высота для игры */
+            border: 1px solid #fff;
+        }
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
         }
         #score {
             position: absolute;
-            top: 140px;
-            right: 1090px;
+            top: 10px;
+            right: 10px;
             font-size: 24px;
             color: #fff;
             background-color: rgba(0, 0, 0, 0.5);
@@ -33,15 +44,24 @@
     </style>
 </head>
 <body>
-    <div id="score">Score: 0</div>
-    <canvas id="gameCanvas" width="480" height="640"></canvas>
+    <div id="game-container">
+        <div id="score">Score: 0</div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
 
-        const SCREEN_WIDTH = canvas.width;
-        const SCREEN_HEIGHT = canvas.height;
+        // Установка размера Canvas в зависимости от размера контейнера
+        function resizeCanvas() {
+            const container = document.getElementById('game-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
         const PLAYER_WIDTH = 50;
         const PLAYER_HEIGHT = 50;
         const ITEM_WIDTH = 20;
@@ -52,8 +72,8 @@
         let score = 0;
 
         let player = {
-            x: (SCREEN_WIDTH - PLAYER_WIDTH) / 2,
-            y: SCREEN_HEIGHT - PLAYER_HEIGHT - 10,
+            x: (canvas.width - PLAYER_WIDTH) / 2,
+            y: canvas.height - PLAYER_HEIGHT - 10,
             width: PLAYER_WIDTH,
             height: PLAYER_HEIGHT,
             color: 'blue'
@@ -66,11 +86,11 @@
         }
 
         function updateGame() {
-            ctx.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (Math.random() < 0.05) {
                 items.push({
-                    x: Math.random() * (SCREEN_WIDTH - ITEM_WIDTH),
+                    x: Math.random() * (canvas.width - ITEM_WIDTH),
                     y: 0,
                     width: ITEM_WIDTH,
                     height: ITEM_HEIGHT,
@@ -80,7 +100,7 @@
 
             items.forEach((item, index) => {
                 item.y += ITEM_FALL_SPEED;
-                if (item.y > SCREEN_HEIGHT) {
+                if (item.y > canvas.height) {
                     items.splice(index, 1);
                 }
                 if (item.x < player.x + player.width &&
@@ -100,7 +120,7 @@
         document.addEventListener('keydown', (event) => {
             if (event.key === 'ArrowLeft' && player.x > 0) {
                 player.x -= PLAYER_SPEED;
-            } else if (event.key === 'ArrowRight' && player.x < SCREEN_WIDTH - PLAYER_WIDTH) {
+            } else if (event.key === 'ArrowRight' && player.x < canvas.width - PLAYER_WIDTH) {
                 player.x += PLAYER_SPEED;
             }
         });
