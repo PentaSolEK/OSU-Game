@@ -30,6 +30,7 @@
         #gameCanvas {
             width: 100%;
             height: 100%;
+            display: none; /* Скрыть канвас до начала игры */
         }
         #score {
             position: absolute;
@@ -40,11 +41,39 @@
             background-color: rgba(0, 0, 0, 0.5);
             padding: 5px 10px;
             border-radius: 5px;
+            display: none; /* Скрыть счет до начала игры */
+        }
+        #welcome-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        #welcome-screen h1 {
+            margin: 0;
+            font-size: 32px;
+        }
+        #play-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #FFFFFF;
+            color: #000000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #play-button:hover {
+            background-color: #808080;
         }
     </style>
 </head>
 <body>
     <div id="game-container">
+        <div id="welcome-screen">
+            <h1>Welcome to Osu! Game</h1>
+            <button id="play-button">Play</button>
+        </div>
         <div id="score">Score: 0</div>
         <canvas id="gameCanvas"></canvas>
     </div>
@@ -52,6 +81,8 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const playButton = document.getElementById('play-button');
 
         // Установка размера Canvas в зависимости от размера контейнера
         function resizeCanvas() {
@@ -62,27 +93,18 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        const PLAYER_WIDTH = 50;
-        const PLAYER_HEIGHT = 50;
-        const ITEM_WIDTH = 20;
-        const ITEM_HEIGHT = 20;
+        const ITEM_RADIUS = 10;
         const ITEM_FALL_SPEED = 5;
-        const PLAYER_SPEED = 10;
 
         let score = 0;
-
-        let player = {
-            x: (canvas.width - PLAYER_WIDTH) / 2,
-            y: canvas.height - PLAYER_HEIGHT - 10,
-            width: PLAYER_WIDTH,
-            height: PLAYER_HEIGHT,
-            color: 'blue'
-        };
         let items = [];
 
-        function drawRect(rect) {
-            ctx.fillStyle = rect.color;
-            ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        function drawCircle(item) {
+            ctx.beginPath();
+            ctx.arc(item.x, item.y, ITEM_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = item.color;
+            ctx.fill();
+            ctx.closePath();
         }
 
         function updateGame() {
@@ -90,39 +112,37 @@
 
             if (Math.random() < 0.05) {
                 items.push({
-                    x: Math.random() * (canvas.width - ITEM_WIDTH),
+                    x: Math.random() * (canvas.width - ITEM_RADIUS * 2) + ITEM_RADIUS,
                     y: 0,
-                    width: ITEM_WIDTH,
-                    height: ITEM_HEIGHT,
+                    radius: ITEM_RADIUS,
                     color: 'red'
                 });
             }
 
             items.forEach((item, index) => {
                 item.y += ITEM_FALL_SPEED;
-                if (item.y > canvas.height) {
+                if (item.y - ITEM_RADIUS > canvas.height) {
                     items.splice(index, 1);
                 }
-                if (item.x < player.x + player.width &&
-                    item.x + item.width > player.x &&
-                    item.y < player.y + player.height &&
-                    item.y + item.height > player.y) {
+            });
+
+            items.forEach(drawCircle);
+        }
+
+        canvas.addEventListener('click', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            items.forEach((item, index) => {
+                const dx = mouseX - item.x;
+                const dy = mouseY - item.y;
+                if (dx * dx + dy * dy <= ITEM_RADIUS * ITEM_RADIUS) {
                     items.splice(index, 1);
                     score++;
                     scoreElement.textContent = `Score: ${score}`;
                 }
             });
-
-            drawRect(player);
-            items.forEach(drawRect);
-        }
-
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'ArrowLeft' && player.x > 0) {
-                player.x -= PLAYER_SPEED;
-            } else if (event.key === 'ArrowRight' && player.x < canvas.width - PLAYER_WIDTH) {
-                player.x += PLAYER_SPEED;
-            }
         });
 
         function gameLoop() {
@@ -130,7 +150,13 @@
             requestAnimationFrame(gameLoop);
         }
 
-        gameLoop();
+        // Начать игру по нажатию кнопки Play
+        playButton.addEventListener('click', () => {
+            welcomeScreen.style.display = 'none';
+            canvas.style.display = 'block';
+            scoreElement.style.display = 'block';
+            gameLoop();
+        });
     </script>
 </body>
 </html>
