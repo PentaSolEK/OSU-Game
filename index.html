@@ -70,6 +70,14 @@
             user-select: none;
         }
         .button:hover { background-color: #808080; }
+        #bottom-line {
+            width: 480px;
+            height: 5px;
+            background-color: #fff;
+            position: absolute;
+            bottom: 40px; /* 25px from the bottom of the container */
+            display: none; /* Initially hidden */
+        }
     </style>
 </head>
 <body>
@@ -88,6 +96,7 @@
             <button id="restart-button" class="button">Restart</button>
             <button id="exit-button" class="button">Exit to Welcome Screen</button>
         </div>
+        <div id="bottom-line"></div>
     </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -101,9 +110,10 @@
         const restartButton = document.getElementById('restart-button');
         const exitButton = document.getElementById('exit-button');
         const totalPointsElement = document.getElementById('total-points');
-        const ITEM_RADIUS = 13;
-        const ITEM_HITBOX_RADIUS = 26;
-        const ITEM_FALL_SPEED = 322; // Pixels per second
+        const bottomLine = document.getElementById('bottom-line');
+        const ITEM_WIDTH = 120;
+        const ITEM_HEIGHT = 30;
+        const ITEM_FALL_SPEED = 450; // Pixels per second
         const GAME_DURATION = 15;
         let score, timeLeft, gameRunning, items, lastTimestamp;
         let totalPoints = parseInt(localStorage.getItem('totalPoints')) || 0;
@@ -124,6 +134,7 @@
             scoreElement.style.display = 'block';
             timerElement.style.display = 'block';
             endScreen.style.display = 'none';
+            bottomLine.style.display = 'block'; // Show the line
             score = 0;
             timeLeft = GAME_DURATION;
             items = [];
@@ -132,6 +143,7 @@
             lastTimestamp = performance.now();
             gameLoop();
             startTimer();
+            startItemGeneration();
         }
 
         function updateUI() {
@@ -144,20 +156,17 @@
             lastTimestamp = timestamp;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (Math.random() < 0.05) {
-                items.push({ x: Math.random() * (canvas.width - ITEM_RADIUS * 2) + ITEM_RADIUS, y: 0, radius: ITEM_RADIUS, color: 'red' });
-            }
+
             items.forEach((item, index) => {
                 item.y += ITEM_FALL_SPEED * deltaTime;
-                if (item.y - ITEM_RADIUS > canvas.height) items.splice(index, 1);
+                if (item.y - ITEM_HEIGHT > canvas.height) items.splice(index, 1);
             });
+
             items.forEach(item => {
-                ctx.beginPath();
-                ctx.arc(item.x, item.y, ITEM_RADIUS, 0, Math.PI * 2);
-                ctx.fillStyle = item.color;
-                ctx.fill();
-                ctx.closePath();
+                ctx.fillStyle = item.color; // Use item's color
+                ctx.fillRect(item.x, item.y, item.width, item.height);
             });
+
             if (gameRunning) requestAnimationFrame(gameLoop);
         }
 
@@ -165,9 +174,10 @@
             const rect = canvas.getBoundingClientRect();
             const mouseX = (event.clientX || event.touches[0].clientX) - rect.left;
             const mouseY = (event.clientY || event.touches[0].clientY) - rect.top;
-            items.forEach((item, index) => {
-                if (Math.hypot(mouseX - item.x, mouseY - item.y) <= ITEM_HITBOX_RADIUS) {
-                    items.splice(index, 1);
+
+            items.forEach(item => {
+                if (mouseX >= item.x && mouseX <= item.x + ITEM_WIDTH && mouseY >= item.y && mouseY <= item.y + ITEM_HEIGHT) {
+                    item.color = '#9f9'; // Light green color
                     score++;
                     updateUI();
                 }
@@ -192,11 +202,35 @@
             }, 1000);
         }
 
+        function startItemGeneration() {
+            const sections = 4;
+            const sectionWidth = canvas.width / sections;
+            for (let i = 0; i < sections; i++) {
+                generateItemsInSection(i * sectionWidth, sectionWidth);
+            }
+        }
+
+        function generateItemsInSection(xStart, width) {
+            const generateItem = () => {
+                if (!gameRunning) return;
+                items.push({
+                    x: xStart + (width - ITEM_WIDTH) / 2,
+                    y: -ITEM_HEIGHT,
+                    width: ITEM_WIDTH,
+                    height: ITEM_HEIGHT,
+                    color: '#fff' // Initial color is white
+                });
+                setTimeout(generateItem, 500 + Math.random() * 1500);
+            };
+            generateItem();
+        }
+
         function endGame() {
             gameRunning = false;
             canvas.style.display = 'none';
             scoreElement.style.display = 'none';
             timerElement.style.display = 'none';
+            bottomLine.style.display = 'none'; // Hide the line
             endScreen.style.display = 'flex';
             finalScoreElement.textContent = `Your score is ${score}`;
             totalPoints += score;
@@ -210,6 +244,7 @@
             endScreen.style.display = 'none';
             welcomeScreen.style.display = 'flex';
         });
+
     </script>
 </body>
 </html>
